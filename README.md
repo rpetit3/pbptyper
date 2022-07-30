@@ -43,7 +43,7 @@ bin/pbptyper --help
 ╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────╮
 │    --version                  Show the version and exit.                                            │
 │ *  --assembly        TEXT     Input assembly in FASTA format (gzip is OK) [required]                │
-│    --db              TEXT     Input database in uncompressed FASTA format [default: db/] │
+│    --db              TEXT     Input database in uncompressed FASTA format [default: db/]            │
 │    --prefix          TEXT     Prefix to use for output files [default: basename of input]           │
 │    --outdir          TEXT     Directory to save output files [default: ./]                          |
 │    --min_pident      INTEGER  Minimum percent identity to count a hit [default: 95]                 │
