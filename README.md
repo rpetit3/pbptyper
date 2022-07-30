@@ -82,12 +82,12 @@ against the `qcovs` column of the blast output.
 
 ## Output Files
 
-| Filename                 | Description                                       |
-|--------------------------|---------------------------------------------------|
-| `{PREFIX}.tsv`           | A tab-delimited file with the predicted PBP type  |
-| `{PREFIX}-1A.tblasn.tsv` | A tab-delimited file of all blast hits against 1A |
-| `{PREFIX}-2B.tblasn.tsv` | A tab-delimited file of all blast hits against 2B |
-| `{PREFIX}-2X.tblasn.tsv` | A tab-delimited file of all blast hits against 2X |
+| Filename                  | Description                                       |
+|---------------------------|---------------------------------------------------|
+| `{PREFIX}.tsv`            | A tab-delimited file with the predicted PBP type  |
+| `{PREFIX}-1A.tblastn.tsv` | A tab-delimited file of all blast hits against 1A |
+| `{PREFIX}-2B.tblastn.tsv` | A tab-delimited file of all blast hits against 2B |
+| `{PREFIX}-2X.tblastn.tsv` | A tab-delimited file of all blast hits against 2X |
 
 ### Example `{PREFIX}.tsv`
 
