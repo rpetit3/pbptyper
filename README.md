@@ -118,14 +118,14 @@ it is the standard `-outfmt 6`, so tab-delimited and easy to parse.
 ## Naming
 
 The original implementation was called _PBP-Gene_Typer.pl_. For this rewrite in Python, I just shortened it to
-`pbptype`. _Haha not much else to the naming!_
+`pbptyper`. _Haha not much else to the naming!_
 
 ## Citation
 
 If you use this tool please cite the following:
 
 **PBP Typing Method**  
-_Li Y, Metcalf BJ, Chochua S, et al. [Penicillin-binding protein transpeptidase signatures for tracking and predicting β-lactam resistance levels in Streptococcus pneumoniae](https://journals.asm.org/doi/full/10.1128/mBio.00756-16) mBio.;7(3):60 pii:e00756–16. (2016)_  
+_Li Y, Metcalf BJ, Chochua S, et al. [Penicillin-binding protein transpeptidase signatures for tracking and predicting β-lactam resistance levels in Streptococcus pneumoniae](https://journals.asm.org/doi/full/10.1128/mBio.00756-16) mBio 7(3):60 pii:e00756–16. (2016)_  
 
 **pasty**  
 _Petit III RA [pasty: A tool easily taken advantage of for in silico serogrouping of Pseudomonas aeruginosa isolates](https://github.com/rpetit3/pasty) (GitHub)_  
