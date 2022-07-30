@@ -10,7 +10,7 @@ available at [BenJamesMetcalf/Spn_Scripts_Reference](https://github.com/BenJames
 I'll be the first to admit, my Perl skills aren't what they used to be. I tried. But I also wanted to
 simplify things a little. The original method takes FASTQs, trims adapters, assembles with Velvet, 
 predicts genes, Blast genes, etc... I think these days its much easier to just start with assemblies. 
-I changed things so that, all thats needed now is an assembly and `tblastn` is used to blast the PBP
+I changed things so that, all that's needed is an assembly and `tblastn` is used to blast the PBP
 proteins against the assembly.
 
 ## Introduction
