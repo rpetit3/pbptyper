@@ -106,7 +106,7 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage):
         outfile = f"{outdir}/{prefix}-{k}".replace("//", "/")
 
         print(f"[italic]TBLASTN results written to [deep_sky_blue1]{outfile}.tblastn.tsv[/deep_sky_blue1][/italic]\n")
-        with open(f"{outfile}.blastn.tsv", 'wt') as fh_out:
+        with open(f"{outfile}.tblastn.tsv", 'wt') as fh_out:
             fh_out.write("\t".join(TBLASTN_COLS) + "\n")
             for result in tblastn_stdout:
                 fh_out.write(f"{result}\n")
