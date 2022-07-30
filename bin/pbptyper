@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+from rich import print
+from rich.console import Console
+from rich.table import Table
+import rich_click as click
+
+DB_PATH = str(Path( __file__ ).parent.absolute()).replace("bin", "db")
+DB_FASTAS = {
+    "1A": "SPN_bLactam_1A-DB.faa",
+    "2B": "SPN_bLactam_2B-DB.faa",
+    "2X": "SPN_bLactam_2X-DB.faa"
+}
+VERSION = '1.0.0'
+TBLASTN_COLS = [
+    "qseqid", "sseqid", "pident", "qcovs", "qlen", "slen", "length", "nident", "mismatch",
+    "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore", "qseq", "sseq"
+]
+
+def check_file_exists(filename: str) -> str:
+    """
+    Check if file exists and return the absolute path of file, otherwise raise an error.
+
+    Args:
+        `filename`: Name of file to check.
+
+    Returns:
+        Absolute path of file.
+    """
+    if not Path(filename).exists():
+        raise click.BadParameter(f'{filename} does not exist')
+    return str(Path(filename).absolute())
+
+
+def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> dict:
+    """
+    Run BLASTN and save the output to a file.
+
+    Args:
+        `query`: Path to query file.
+        `db`: Path to database file.
+        `min_pident`: Minimum percent identity.
+        `min_coverage`: Minimum coverage.
+
+    Returns:
+        Dictionary of BLASTN output.
+    """
+    from executor import ExternalCommand, ExternalCommandFailed
+
+    outfmt = ' '.join(TBLASTN_COLS)
+    cat_type = 'zcat' if db.endswith('.gz') else 'cat'
+    try:
+        # Sort results by query coverage, percent identity, then bitscore
+        command = ExternalCommand(
+            f"{cat_type} {db} | tblastn -query {query} -subject - -qcov_hsp_perc {min_coverage} -outfmt '6 {outfmt}' | sort -rn -k 4,4 -k 3,3 -k 16,16",
+            capture=True, 
+            capture_stderr=True
+        )
+        command.start()
+
+        # Convert results to list of dictionaries
+        top_hit = {'pbp_id': 'NA', 'qcovs': "0", 'pident': "0.0"}
+        raw_results = []
+        for line in str(command.decoded_stdout).split("\n"):
+            if line:
+                raw_results.append(line)
+                result = dict(zip(TBLASTN_COLS, line.split('\t')))
+                if float(result['pident']) >= min_pident:
+                    if top_hit['pbp_id'] == 'NA':
+                        top_hit = result
+                        if float(result['pident']) == 100.0 and int(result['length']) == int(result['qlen']):
+                            top_hit['pbp_id'] = result['qseqid'].split("|")[0]
+                        else:
+                            top_hit['pbp_id'] = 'NEW'
+        return [top_hit, raw_results, command.decoded_stderr]
+    except ExternalCommandFailed as e:
+        print(e, file=sys.stderr)
+        sys.exit(e.returncode)
+
+
+@click.command()
+@click.version_option(VERSION)
+@click.option('--assembly', required=True, help='Input assembly in FASTA format (gzip is OK)')
+@click.option('--db', default=DB_PATH, show_default=True, help='Path to the input database')
+@click.option('--prefix', default="basename of input", show_default=True, help='Prefix to use for output files')
+@click.option('--outdir', default="./", show_default=True, help='Directory to save output files')
+@click.option('--min_pident', default=95, show_default=True, help='Minimum percent identity to count a hit')
+@click.option('--min_coverage', default=95, show_default=True, help='Minimum percent coverage to count a hit')
+def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage):
+    """In silico Penicillin Binding Protein (PBP) typer for Streptococcus pneumoniae assemblies"""
+    if outdir != "./":
+        Path(outdir).mkdir(parents=True, exist_ok=True)
+    assembly = check_file_exists(assembly)
+    prefix = str(Path(assembly).stem) if prefix == "basename of input" else prefix
+
+    console = Console()
+    results = {}
+    for k,v in DB_FASTAS.items():
+        print(f"[italic]Running TBLASTN for {k}...[/italic]")
+        query = check_file_exists(f"{db}/{v}")
+        top_hit, tblastn_stdout, tblastn_stderr = run_tblastn(query, assembly, min_pident, min_coverage)
+        results[k] = top_hit
+
+        # Write tblastn hits
+        outfile = f"{outdir}/{prefix}-{k}".replace("//", "/")
+
+        print(f"[italic]TBLASTN results written to [deep_sky_blue1]{outfile}.tblastn.tsv[/deep_sky_blue1][/italic]\n")
+        with open(f"{outfile}.blastn.tsv", 'wt') as fh_out:
+            fh_out.write("\t".join(TBLASTN_COLS) + "\n")
+            for result in tblastn_stdout:
+                fh_out.write(f"{result}\n")
+    
+
+    # Predicted PBP Type
+    outfile = f"{outdir}/{prefix}".replace("//", "/")
+    prediction_table = Table(title=f"Predicted PBP Type")
+    prediction_table.add_column("sample", style="white")
+    prediction_table.add_column("pbptype", style="cyan")
+    prediction_table.add_column("1A_coverage", style="green")
+    prediction_table.add_column("1A_pident", style="green")
+    prediction_table.add_column("2B_coverage", style="green")
+    prediction_table.add_column("2B_pident", style="green")
+    prediction_table.add_column("2X_coverage", style="green")
+    prediction_table.add_column("2X_pident", style="green")
+    with open(f"{outfile}.tsv", 'wt') as fh_out:
+        pbptype = f"{results['1A']['pbp_id']}:{results['2B']['pbp_id']}:{results['2X']['pbp_id']}"
+        prediction_table.add_row(prefix, pbptype, results['1A']['qcovs'], results['1A']['pident'], results['2B']['qcovs'],
+                                 results['2B']['pident'], results['2X']['qcovs'], results['2X']['pident'])
+        fh_out.write("sample\tpbptype\t1A_coverage\t1A_pident\t2B_coverage\t2B_pident\t2X_coverage\t2X_pident\n")
+        fh_out.write(f"{prefix}\t{pbptype}\t{results['1A']['qcovs']}\t{results['1A']['pident']}\t{results['2B']['qcovs']}\t{results['2B']['pident']}\t{results['2X']['qcovs']}\t{results['2X']['pident']}\n")
+    console.print(prediction_table)  
+    print(f"[italic]Predicted pbp type result written to [deep_sky_blue1]{outfile}.tsv[/deep_sky_blue1][/italic]\n")
+
+
+if __name__ == '__main__':
+    pbptyper()

@@ -1,0 +1,78 @@
+name: pbptyper-test
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  pbptyper-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Checkout rpetit3/pbptyper
+        uses: actions/checkout@v2
+
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: pbptyper
+          auto-activate-base: false
+
+      - name: Setup pbptyper Environment
+        run: |
+          conda install -y -c conda-forge -c bioconda rich-click executor 'python>=3.7' blast
+
+      - name: Environment Information
+        run: uname -a && env
+
+      - name: Test pbptyper basics
+        run: |
+          echo "Testing pbptyper"
+          bin/pbptyper --version
+          bin/pbptyper --help
+
+      - name: Test pbptyper
+        run: |
+          echo "SRR2912551"
+          bin/pbptyper --assembly test/SRR2912551.fna.gz --prefix SRR2912551 --db db/
+          cat SRR2912551.tsv
+          head SRR2912551-1A.tblastn.tsv
+          head SRR2912551-2B.tblastn.tsv
+          head SRR2912551-2X.tblastn.tsv
+          echo "SRR8654742"
+          bin/pbptyper --assembly test/SRR8654742.fna --prefix SRR8654742 --outdir SRR8654742
+          cat SRR8654742/SRR8654742.tsv
+          head SRR8654742/SRR8654742-1A.tblastn.tsv
+          head SRR8654742/SRR8654742-2B.tblastn.tsv
+          head SRR8654742/SRR8654742-2X.tblastn.tsv
+          echo "not-spn"
+          bin/pbptyper --assembly test/not-spn.fna.gz --prefix not-spn
+          cat not-spn.tsv
+          head not-spn-1A.tblastn.tsv
+          head not-spn-2B.tblastn.tsv
+          head not-spn-2X.tblastn.tsv
+          echo "empty"
+          bin/pbptyper --assembly test/empty.fasta --prefix empty
+          cat empty.tsv
+          head empty-1A.tblastn.tsv
+          head empty-2B.tblastn.tsv
+          head empty-2X.tblastn.tsv
+          echo "not-a-fasta"
+          bin/pbptyper --assembly test/not-a-fasta.fasta --prefix not-a-fasta
+          cat not-a-fasta.tsv
+          head not-a-fasta-1A.tblastn.tsv
+          head not-a-fasta-2B.tblastn.tsv
+          head not-a-fasta-2X.tblastn.tsv
+          echo "poor"
+          bin/pbptyper --assembly test/poor.fasta --prefix poor --outdir poor
+          cat poor.tsv
+          head poor-1A.tblastn.tsv
+          head poor-2B.tblastn.tsv
+          head poor-2X.tblastn.tsv
