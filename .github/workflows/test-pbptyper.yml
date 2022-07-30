@@ -72,7 +72,7 @@ jobs:
           head not-a-fasta-2X.tblastn.tsv
           echo "poor"
           bin/pbptyper --assembly test/poor.fasta --prefix poor --outdir poor
-          cat poor.tsv
-          head poor-1A.tblastn.tsv
-          head poor-2B.tblastn.tsv
-          head poor-2X.tblastn.tsv
+          cat poor/poor.tsv
+          head poor/poor-1A.tblastn.tsv
+          head poor/poor-2B.tblastn.tsv
+          head poor/poor-2X.tblastn.tsv
