@@ -23,14 +23,12 @@ The PBP typing scheme is based methods described in _[Li et. al.](https://journa
 
 ### Conda
 
-Once released this will be added to Bioconda, in the meantime this should work.
+`pbptyper`is available from Bioconda
 
 ```{bash}
-mamba create -n pbptyper-dev -c conda-forge -c bioconda rich-click executor 'python>=3.7' blast
-conda activate pbptyper-dev
-git clone git@github.com:rpetit3/pbptyper.git
-cd pbptyper
-bin/pbptyper --help
+mamba create -n pbptyper -c conda-forge -c bioconda pbptyper
+conda activate pbptyper
+pbptyper --help
 ```
 
 ## Usage
