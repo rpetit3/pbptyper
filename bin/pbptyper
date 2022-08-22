@@ -6,13 +6,13 @@ from rich.console import Console
 from rich.table import Table
 import rich_click as click
 
+VERSION = '1.0.1'
 DB_PATH = str(Path( __file__ ).parent.absolute()).replace("bin", "db")
 DB_FASTAS = {
     "1A": "SPN_bLactam_1A-DB.faa",
     "2B": "SPN_bLactam_2B-DB.faa",
     "2X": "SPN_bLactam_2X-DB.faa"
 }
-VERSION = '1.0.0'
 TBLASTN_COLS = [
     "qseqid", "sseqid", "pident", "qcovs", "qlen", "slen", "length", "nident", "mismatch",
     "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore", "qseq", "sseq"
