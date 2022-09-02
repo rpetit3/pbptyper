@@ -82,6 +82,8 @@ def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> di
                     if top_hit['pbp_id'] == 'NONE':
                         top_hit = result
                         top_hit['pbp_id'] = 'NA'
+        if top_hit['pbp_id'] == 'NONE':
+            top_hit['pbp_id'] = 'NA'
         return [top_hit, secondary_hits, raw_results, command.decoded_stderr]
     except ExternalCommandFailed as e:
         print(e, file=sys.stderr)
