@@ -8,14 +8,13 @@ available at [BenJamesMetcalf/Spn_Scripts_Reference](https://github.com/BenJames
 [BenJamesMetcalf/JanOw_Dependencies](https://github.com/BenJamesMetcalf/JanOw_Dependencies).
 
 I'll be the first to admit, my Perl skills aren't what they used to be. I tried. But I also wanted to
-simplify things a little. The original method takes FASTQs, trims adapters, assembles with Velvet, 
-predicts genes, Blast genes, etc... I think these days its much easier to just start with assemblies. 
-I changed things so that, all that's needed is an assembly and `tblastn` is used to blast the PBP
-proteins against the assembly.
+simplify things a little. The original method uses FASTQs as inputs, then trims adapters, assembles with Velvet,
+predicts genes, Blast genes, etc... I think these days its much easier to just start with assemblies.
+I changed things so that, all that's needed is an assembly and `tblastn` to predict the PBP type.
 
 ## Introduction
 
-`pbptyper` is a tool to identify the Penicillin Binding Protein (PBP) of _Streptococcus pneumoniae_ assemblies. 
+`pbptyper` is a tool to identify the Penicillin Binding Protein (PBP) of _Streptococcus pneumoniae_ assemblies.
 Using an input assembly (uncompressed or gzip-compressed), the PBP 1A, 2B, and 2X proteins are blasted against
 the assembly from which a PBP type is predicted.
 
@@ -119,7 +118,7 @@ SRR2912551.fna  23:0:2  100     100.000 556     100     100.000 567     100     
 
 #### PBPType Interpretation
 
-In the example above `pbptyper` was determined to be _23:0:2_. This means for 1A, allele 23 had 
+In the example above `pbptyper` predicted the PBP Type to be _23:0:2_. This means for 1A, allele 23 had
 a perfect match, for 2B, allele 0 had a perfect match, and finally for 2X, allele 2 had a perfect
 match.
 
