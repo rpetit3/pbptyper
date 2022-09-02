@@ -46,6 +46,7 @@ pbptyper --help
 │    --outdir          TEXT     Directory to save output files [default: ./]                          |
 │    --min_pident      INTEGER  Minimum percent identity to count a hit [default: 95]                 │
 │    --min_coverage    INTEGER  Minimum percent coverage to count a hit [default: 95]                 │
+│    --quiet                    Suppress all output                                                   │
 │    --help                     Show this message and exit.                                           │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
@@ -78,6 +79,10 @@ against the `pident` column of the blast output.
 The minimum coverage of a PBP to be considered for typing. The is compared
 against the `qcovs` column of the blast output.
 
+### --quiet
+
+This will quiet STDOUT quite a bit.
+
 ## Output Files
 
 | Filename                  | Description                                       |
@@ -93,20 +98,51 @@ This file will contain the final predicted PBP type based on highest coverage, p
 (_ties are broken in that order_). Here's what to expect the output to look like:
 
 ```{bash}
-sample  pbptype 1A_coverage     1A_pident       2B_coverage     2B_pident       2X_coverage     2X_pident
-SRR2912551.fna  23:0:2  100     100.000 100     100.000 100     100.000
+sample  pbptype 1A_coverage     1A_pident       1A_bitscore     2B_coverage     2B_pident       2B_bitscore     2X_coverage     2X_pident       2X_bitscore     comment
+SRR2912551.fna  23:0:2  100     100.000 556     100     100.000 567     100     100.000 741
 ```
 
-| Column Name | Description                                |
-|-------------|--------------------------------------------|
-| sample      | Name of the sample processed               |
-| pbptype     | The predicted PBP type (1A:2B:2X)          |
-| 1A_coverage | The percent coverage of the 1A PBP protein |
-| 1A_pident   | The percent identity of the 1A PBP protein |
-| 2B_coverage | The percent coverage of the 2B PBP protein |
-| 2B_pident   | The percent identity of the 2B PBP protein |
-| 2X_coverage | The percent coverage of the 2X PBP protein |
-| 2X_pident   | The percent identity of the 2X PBP protein |
+| Column Name | Description                                                    |
+|-------------|----------------------------------------------------------------|
+| sample      | Name of the sample processed                                   |
+| pbptype     | The predicted PBP type (1A:2B:2X)                              |
+| 1A_coverage | The percent coverage of the top hit against the 1A PBP protein |
+| 1A_pident   | The percent identity of the top hit against the 1A PBP protein |
+| 1A_bitscore | The bitscore of the top hit against the 1A PBP protein         |
+| 2B_coverage | The percent coverage of the top hit against the 2B PBP protein |
+| 2B_pident   | The percent identity of the top hit against the 2B PBP protein |
+| 2B_bitscore | The bitscore of the top hit against the 2B PBP protein         |
+| 2X_coverage | The percent coverage of the top hit against the 2X PBP protein |
+| 2X_pident   | The percent identity of the top hit against the 2X PBP protein |
+| 2X_bitscore | The bitscore of the top hit against the 2X PBP protein         |
+| comment     | Any comments associated with the analysis                      |
+
+#### PBPType Interpretation
+
+In the example above `pbptype` was determined to be _23:0:2_. This means for 1A, allele 23 had 
+a perfect match, for 2B, allele 0 had a perfect match, and finally for 2X, allele 2 had a perfect
+match.
+
+Here's a break down of possible ID values:
+
+| Allele ID       | Description                                                                                        |
+|-----------------|----------------------------------------------------------------------------------------------------|
+| 0+ (any number) | A perfect match was found against an existing allele ID (_yes the count starts at 0!_)             |
+| NEW             | A hit was made that was not perfect but exceeded the `min_pident` and `min_coverage` thresholds    |
+| MULTIPLE        | There was a perfect match against multiple allele IDs for a loci, and a ID could not be determined |
+| NA              | No hits exceeded the `min_pident` and `min_coverage` thresholds                                    |
+
+#### Merging Multiple Runs
+
+You can use [csvtk - concat](https://bioinf.shenwei.me/csvtk/usage/#concat) from [Wei Shen](https://github.com/shenwei356)
+to easily merge the results from multiple samples. Here's an example of how to do so:
+
+```{bash}
+csvtk concat --tabs --out-tabs --out-file pbptyper.tsv $(ls *.tsv | grep -v "tblastn")
+```
+
+This is just one way to do it, there are many other ways. But `csvtk` is included in the Bioconda recipe for pbptyper.
+So its worth considering!
 
 ### Example `{PREFIX}-{1A|2B|2X}.tblastn.tsv`
 

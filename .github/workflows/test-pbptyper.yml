@@ -40,6 +40,12 @@ jobs:
 
       - name: Test pbptyper
         run: |
+          echo "ERR1065617"
+          bin/pbptyper --assembly test/ERR1065617.fna.gz --prefix ERR1065617 --db db/
+          cat ERR1065617.tsv
+          head ERR1065617-1A.tblastn.tsv
+          head ERR1065617-2B.tblastn.tsv
+          head ERR1065617-2X.tblastn.tsv
           echo "SRR2912551"
           bin/pbptyper --assembly test/SRR2912551.fna.gz --prefix SRR2912551 --db db/
           cat SRR2912551.tsv
