@@ -119,7 +119,7 @@ SRR2912551.fna  23:0:2  100     100.000 556     100     100.000 567     100     
 
 #### PBPType Interpretation
 
-In the example above `pbptype` was determined to be _23:0:2_. This means for 1A, allele 23 had 
+In the example above `pbptyper` was determined to be _23:0:2_. This means for 1A, allele 23 had 
 a perfect match, for 2B, allele 0 had a perfect match, and finally for 2X, allele 2 had a perfect
 match.
 
@@ -134,15 +134,14 @@ Here's a break down of possible ID values:
 
 #### Merging Multiple Runs
 
-You can use [csvtk - concat](https://bioinf.shenwei.me/csvtk/usage/#concat) from [Wei Shen](https://github.com/shenwei356)
+You can a tool like [csvtk - concat](https://bioinf.shenwei.me/csvtk/usage/#concat) from [Wei Shen](https://github.com/shenwei356)
 to easily merge the results from multiple samples. Here's an example of how to do so:
 
 ```{bash}
 csvtk concat --tabs --out-tabs --out-file pbptyper.tsv $(ls *.tsv | grep -v "tblastn")
 ```
 
-This is just one way to do it, there are many other ways. But `csvtk` is included in the Bioconda recipe for pbptyper.
-So its worth considering!
+This is just one way to do it, there are many other ways.
 
 ### Example `{PREFIX}-{1A|2B|2X}.tblastn.tsv`
 
@@ -161,8 +160,8 @@ If you use this tool please cite the following:
 **PBP Typing Method**  
 _Li Y, Metcalf BJ, Chochua S, et al. [Penicillin-binding protein transpeptidase signatures for tracking and predicting β-lactam resistance levels in Streptococcus pneumoniae](https://journals.asm.org/doi/full/10.1128/mBio.00756-16) mBio 7(3):60 pii:e00756–16. (2016)_  
 
-**pasty**  
-_Petit III RA [pasty: A tool easily taken advantage of for in silico serogrouping of Pseudomonas aeruginosa isolates](https://github.com/rpetit3/pasty) (GitHub)_  
+**pbptyper**  
+_Petit III RA [pbptyper: In silico Penicillin Binding Protein (PBP) typer for _Streptococcus pneumoniae_ assemblies](https://github.com/rpetit3/pbptyper) (GitHub)_  
 
 **BLAST+**  
 _Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL [BLAST+: architecture and applications.](http://dx.doi.org/10.1186/1471-2105-10-421) BMC Bioinformatics 10, 421 (2009)_  
