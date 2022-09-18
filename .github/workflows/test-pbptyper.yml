@@ -59,19 +59,19 @@ jobs:
           head SRR8654742/SRR8654742-2B.tblastn.tsv
           head SRR8654742/SRR8654742-2X.tblastn.tsv
           echo "S. pseudopneumoniae"
-          bin/pbptyper --assembly test/spseudopneumoniae.fasta --prefix spseudopneumoniae --outdir spseudopneumoniae
+          bin/pbptyper --assembly test/spseudopneumoniae.fna.gz --prefix spseudopneumoniae --outdir spseudopneumoniae
           cat spseudopneumoniae/spseudopneumoniae.tsv
           head spseudopneumoniae/spseudopneumoniae-1A.tblastn.tsv
           head spseudopneumoniae/spseudopneumoniae-2B.tblastn.tsv
           head spseudopneumoniae/spseudopneumoniae-2X.tblastn.tsv
           echo "S. mitis"
-          bin/pbptyper --assembly test/smitis.fasta --prefix smitis --outdir smitis
+          bin/pbptyper --assembly test/smitis.fna.gz --prefix smitis --outdir smitis
           cat smitis/smitis.tsv
           head smitis/smitis-1A.tblastn.tsv
           head smitis/smitis-2B.tblastn.tsv
           head smitis/smitis-2X.tblastn.tsv
           echo "S. suis"
-          bin/pbptyper --assembly test/ssuis.fasta --prefix ssuis --outdir ssuis
+          bin/pbptyper --assembly test/ssuis.fna.gz --prefix ssuis --outdir ssuis
           cat ssuis/ssuis.tsv
           head ssuis/ssuis-1A.tblastn.tsv
           head ssuis/ssuis-2B.tblastn.tsv
