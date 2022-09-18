@@ -186,7 +186,7 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, qu
     prediction_table = Table(title=f"Predicted PBP Type")
     prediction_table.add_column("sample", style="white")
     prediction_table.add_column("pbptype", style="cyan")
-    prediction_table.add_column("ANI", style="green")
+    prediction_table.add_column("ani", style="green")
     prediction_table.add_column("1A_coverage", style="green")
     prediction_table.add_column("1A_pident", style="green")
     prediction_table.add_column("1A_bitscore", style="green")

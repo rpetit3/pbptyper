@@ -105,15 +105,15 @@ This file will contain the final predicted PBP type based on highest coverage, p
 (_ties are broken in that order_). Here's what to expect the output to look like:
 
 ```{bash}
-sample  pbptype 1A_coverage     1A_pident       1A_bitscore     2B_coverage     2B_pident       2B_bitscore     2X_coverage     2X_pident       2X_bitscore     comment
-SRR2912551.fna  23:0:2  100     100.000 556     100     100.000 567     100     100.000 741
+sample	pbptype	ani	1A_coverage	1A_pident	1A_bitscore	2B_coverage	2B_pident	2B_bitscore	2X_coverage	2X_pident	2X_bitscore	comment
+SRR2912551	23:0:2	98.70	100	100.000	556	100	100.000	567	100	100.000	741	
 ```
 
 | Column Name | Description                                                    |
 |-------------|----------------------------------------------------------------|
 | sample      | Name of the sample processed                                   |
 | pbptype     | The predicted PBP type (1A:2B:2X)                              |
-| ANI         | ANI against the _S. pneumoniae_ GCF_000006885 reference genome |
+| ani         | ANI against a _S. pneumoniae_ (GCF_000006885) reference genome |
 | 1A_coverage | The percent coverage of the top hit against the 1A PBP protein |
 | 1A_pident   | The percent identity of the top hit against the 1A PBP protein |
 | 1A_bitscore | The bitscore of the top hit against the 1A PBP protein         |
@@ -139,7 +139,7 @@ Here's a break down of possible ID values:
 | MULTIPLE        | There was a perfect match against multiple allele IDs for a loci, and a ID could not be determined |
 | NEW             | A hit was made that was not perfect but exceeded the `min_pident` and `min_coverage` thresholds    |
 | NA              | No hits exceeded the `min_pident` and `min_coverage` thresholds                                    |
-| NOTSPN          | Input assembly did not exceed `min_ani` threshold against _Streptococcus pneumoniae_               |
+| NOTSPN          | Input assembly did not exceed `min_ani` threshold against _S. pneumoniae_                          |
 
 #### Merging Multiple Runs
 
