@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 import sys
 from pathlib import Path
+from executor import ExternalCommand, ExternalCommandFailed
 from rich import print
 from rich.console import Console
 from rich.table import Table
 import rich_click as click
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 DB_PATH = str(Path( __file__ ).parent.absolute()).replace("bin", "db")
 DB_FASTAS = {
     "1A": "SPN_bLactam_1A-DB.faa",
     "2B": "SPN_bLactam_2B-DB.faa",
     "2X": "SPN_bLactam_2X-DB.faa"
 }
+REFERENCE = "GCF_000006885"
 TBLASTN_COLS = [
     "qseqid", "sseqid", "pident", "qcovs", "qlen", "slen", "length", "nident", "mismatch",
     "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore", "qseq", "sseq"
@@ -31,6 +33,40 @@ def check_file_exists(filename: str) -> str:
     if not Path(filename).exists():
         raise click.BadParameter(f'{filename} does not exist')
     return str(Path(filename).absolute())
+
+
+def run_fastani(query: str, reference: str, outfile: dir) -> float:
+    """
+    Run FastANI and save the output to a file.
+
+    Args:
+        `query`: Path to query file.
+        `reference`: Path to database file.
+        `outfile`: Path to output file.
+    """
+    try:
+        command = ExternalCommand(
+            f"fastANI -q {query} -r {reference} -o {outfile}",
+            capture=True, 
+            capture_stderr=True
+        )
+        command.start()
+
+        ani = 0
+        with open(outfile, 'r') as f:
+            line = f.readline()
+            if line:
+                # test/SRR2912551.fna.gz  GCF_000006885.fna.gz    98.5904 229     246
+                # capture the ANI or 3rd column
+                ani = float(line.split('\t')[2])
+
+        if ani == 0:
+            with open(outfile, 'w') as f:
+                f.write("fastANI does not report ANIs <80%\n")
+        return ani
+    except ExternalCommandFailed as e:
+        print(e, file=sys.stderr)
+        sys.exit(e.returncode)
 
 
 def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> dict:
@@ -98,8 +134,9 @@ def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> di
 @click.option('--outdir', default="./", show_default=True, help='Directory to save output files')
 @click.option('--min_pident', default=95, show_default=True, help='Minimum percent identity to count a hit')
 @click.option('--min_coverage', default=95, show_default=True, help='Minimum percent coverage to count a hit')
+@click.option('--min_ani', default=95, show_default=True, help='Minimum S. pneumoniae ANI to predict PBP Type')
 @click.option('--quiet', is_flag=True, help='Suppress all output')
-def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, quiet):
+def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, quiet):
     """In silico Penicillin Binding Protein (PBP) typer for Streptococcus pneumoniae assemblies"""
     if outdir != "./":
         Path(outdir).mkdir(parents=True, exist_ok=True)
@@ -134,9 +171,17 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, quiet):
             fh_out.write("\t".join(TBLASTN_COLS) + "\n")
             for result in tblastn_stdout:
                 fh_out.write(f"{result}\n")
-    
+
+    # Run fastANI
+    fastani_outfile = f"{outdir}/{prefix}.fastani.tsv".replace("//", "/")
+    if not quiet:
+        print(f"[italic]Running fastANI...[/italic]")
+    ani = run_fastani(assembly, check_file_exists(f"{db}/{REFERENCE}.fna.gz"), fastani_outfile)
+    ani_string = "< 80" if ani == 0 else f"{ani:.2f}"
+    if not quiet:
+        print(f"[italic]S. pneumoniae ({REFERENCE}) ANI is {ani_string}%, results written to [deep_sky_blue1]{fastani_outfile}[/deep_sky_blue1][/italic]\n")
+
     # Predicted PBP Type
-    comment = '; '.join(comment)
     outfile = f"{outdir}/{prefix}".replace("//", "/")
     prediction_table = Table(title=f"Predicted PBP Type")
     prediction_table.add_column("sample", style="white")
@@ -152,7 +197,13 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, quiet):
     prediction_table.add_column("2X_bitscore", style="green")
     prediction_table.add_column("comment", style="green")
     with open(f"{outfile}.tsv", 'wt') as fh_out:
-        pbptype = f"{results['1A']['pbp_id']}:{results['2B']['pbp_id']}:{results['2X']['pbp_id']}"
+        if ani >= min_ani:
+            pbptype = f"{results['1A']['pbp_id']}:{results['2B']['pbp_id']}:{results['2X']['pbp_id']}"
+        else:
+            pbptype = f"NOTSPN:NOTSPN:NOTSPN"
+            comment.append(f"ANI to [italic]S. pneumoniae[/italic] ({REFERENCE}) is {ani_string}%, which is below the minimum {min_ani}% ANI required to predict PBP Type")
+        
+        comment = '; '.join(comment)
         prediction_table.add_row(
             prefix, 
             pbptype, 
@@ -201,7 +252,6 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, quiet):
     if not quiet:
         console.print(prediction_table)  
         print(f"[italic]Predicted pbp type result written to [deep_sky_blue1]{outfile}.tsv[/deep_sky_blue1][/italic]\n")
-
 
 if __name__ == '__main__':
     pbptyper()

@@ -45,6 +45,7 @@ pbptyper --help
 │    --outdir          TEXT     Directory to save output files [default: ./]                          |
 │    --min_pident      INTEGER  Minimum percent identity to count a hit [default: 95]                 │
 │    --min_coverage    INTEGER  Minimum percent coverage to count a hit [default: 95]                 │
+│    --min_ani         INTEGER  Minimum S. pneumoniae ANI to predict PBP Type [default: 95]           │
 │    --quiet                    Suppress all output                                                   │
 │    --help                     Show this message and exit.                                           │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -78,6 +79,12 @@ against the `pident` column of the blast output.
 The minimum coverage of a PBP to be considered for typing. The is compared
 against the `qcovs` column of the blast output.
 
+### --min_ani
+
+The minimum _S. pneumoniae_ ANI required to predict PBP type. The ANI is calculated using
+[FastANI](https://github.com/ParBLiSS/FastANI) and the
+[GCF_000006885](https://www.ncbi.nlm.nih.gov/assembly/GCF_000006885/) reference genome.
+
 ### --quiet
 
 This will quiet STDOUT quite a bit.
@@ -87,6 +94,7 @@ This will quiet STDOUT quite a bit.
 | Filename                  | Description                                       |
 |---------------------------|---------------------------------------------------|
 | `{PREFIX}.tsv`            | A tab-delimited file with the predicted PBP type  |
+| `{PREFIX}.fastani.tsv`    | A tab-delimited file of fastANI results           |
 | `{PREFIX}-1A.tblastn.tsv` | A tab-delimited file of all blast hits against 1A |
 | `{PREFIX}-2B.tblastn.tsv` | A tab-delimited file of all blast hits against 2B |
 | `{PREFIX}-2X.tblastn.tsv` | A tab-delimited file of all blast hits against 2X |
@@ -127,9 +135,10 @@ Here's a break down of possible ID values:
 | Allele ID       | Description                                                                                        |
 |-----------------|----------------------------------------------------------------------------------------------------|
 | 0+ (any number) | A perfect match was found against an existing allele ID (_yes the count starts at 0!_)             |
-| NEW             | A hit was made that was not perfect but exceeded the `min_pident` and `min_coverage` thresholds    |
 | MULTIPLE        | There was a perfect match against multiple allele IDs for a loci, and a ID could not be determined |
+| NEW             | A hit was made that was not perfect but exceeded the `min_pident` and `min_coverage` thresholds    |
 | NA              | No hits exceeded the `min_pident` and `min_coverage` thresholds                                    |
+| NOTSPN          | Input assembly did not exceed `min_ani` threshold against _Streptococcus pneumoniae_               |
 
 #### Merging Multiple Runs
 
@@ -164,3 +173,6 @@ _Petit III RA [pbptyper: In silico Penicillin Binding Protein (PBP) typer for _S
 
 **BLAST+**  
 _Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL [BLAST+: architecture and applications.](http://dx.doi.org/10.1186/1471-2105-10-421) BMC Bioinformatics 10, 421 (2009)_  
+
+**fastANI**  
+_Jain C, Rodriguez-R LM, Phillippy AM, Konstantinidis KT, Aluru S [High throughput ANI analysis of 90K prokaryotic genomes reveals clear species boundaries.](http://dx.doi.org/10.1038/s41467-018-07641-9) Nat. Commun. 9, 5114 (2018)_  
