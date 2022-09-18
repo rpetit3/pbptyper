@@ -27,7 +27,7 @@ jobs:
 
       - name: Setup pbptyper Environment
         run: |
-          conda install -y -c conda-forge -c bioconda rich-click executor 'python>=3.7' blast
+          conda install -y -c conda-forge -c bioconda rich-click executor 'python>=3.7' blast fastani
 
       - name: Environment Information
         run: uname -a && env
