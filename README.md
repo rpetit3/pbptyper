@@ -113,6 +113,7 @@ SRR2912551.fna  23:0:2  100     100.000 556     100     100.000 567     100     
 |-------------|----------------------------------------------------------------|
 | sample      | Name of the sample processed                                   |
 | pbptype     | The predicted PBP type (1A:2B:2X)                              |
+| ANI         | ANI against the _S. pneumoniae_ GCF_000006885 reference genome |
 | 1A_coverage | The percent coverage of the top hit against the 1A PBP protein |
 | 1A_pident   | The percent identity of the top hit against the 1A PBP protein |
 | 1A_bitscore | The bitscore of the top hit against the 1A PBP protein         |

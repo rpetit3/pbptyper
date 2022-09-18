@@ -64,6 +64,12 @@ jobs:
           head spseudopneumoniae/spseudopneumoniae-1A.tblastn.tsv
           head spseudopneumoniae/spseudopneumoniae-2B.tblastn.tsv
           head spseudopneumoniae/spseudopneumoniae-2X.tblastn.tsv
+          echo "S. mitis"
+          bin/pbptyper --assembly test/smitis.fasta --prefix smitis --outdir smitis
+          cat smitis/smitis.tsv
+          head smitis/smitis-1A.tblastn.tsv
+          head smitis/smitis-2B.tblastn.tsv
+          head smitis/smitis-2X.tblastn.tsv
           echo "S. suis"
           bin/pbptyper --assembly test/ssuis.fasta --prefix ssuis --outdir ssuis
           cat ssuis/ssuis.tsv

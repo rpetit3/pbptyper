@@ -134,7 +134,7 @@ def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> di
 @click.option('--outdir', default="./", show_default=True, help='Directory to save output files')
 @click.option('--min_pident', default=95, show_default=True, help='Minimum percent identity to count a hit')
 @click.option('--min_coverage', default=95, show_default=True, help='Minimum percent coverage to count a hit')
-@click.option('--min_ani', default=95, show_default=True, help='Minimum S. pneumoniae ANI to predict PBP Type')
+@click.option('--min_ani', default=90, show_default=True, help='Minimum S. pneumoniae ANI to predict PBP Type')
 @click.option('--quiet', is_flag=True, help='Suppress all output')
 def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, quiet):
     """In silico Penicillin Binding Protein (PBP) typer for Streptococcus pneumoniae assemblies"""
@@ -186,6 +186,7 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, qu
     prediction_table = Table(title=f"Predicted PBP Type")
     prediction_table.add_column("sample", style="white")
     prediction_table.add_column("pbptype", style="cyan")
+    prediction_table.add_column("ANI", style="green")
     prediction_table.add_column("1A_coverage", style="green")
     prediction_table.add_column("1A_pident", style="green")
     prediction_table.add_column("1A_bitscore", style="green")
@@ -205,8 +206,9 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, qu
         
         comment = '; '.join(comment)
         prediction_table.add_row(
-            prefix, 
-            pbptype, 
+            prefix,
+            pbptype,
+            ani_string,
             results['1A']['qcovs'],
             results['1A']['pident'],
             results['1A']['bitscore'],
@@ -221,6 +223,7 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, qu
         column_names = "\t".join([
             "sample",
             "pbptype",
+            "ani",
             "1A_coverage",
             "1A_pident",
             "1A_bitscore",
@@ -236,6 +239,7 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, qu
         column_vals = "\t".join([
             prefix,
             pbptype,
+            ani_string,
             results['1A']['qcovs'],
             results['1A']['pident'],
             results['1A']['bitscore'],
