@@ -37,7 +37,7 @@ jobs:
           echo "Testing pbptyper"
           bin/pbptyper --version
           bin/pbptyper --help
-          bin/pbptyper --check
+          bin/pbptyper --assembly . --check
 
       - name: Test pbptyper
         run: |
