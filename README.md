@@ -46,6 +46,7 @@ pbptyper --help
 │    --min_pident      INTEGER  Minimum percent identity to count a hit [default: 95]                 │
 │    --min_coverage    INTEGER  Minimum percent coverage to count a hit [default: 95]                 │
 │    --min_ani         INTEGER  Minimum S. pneumoniae ANI to predict PBP Type [default: 95]           │
+│    --check                    Check dependencies are installed, then exit                           │
 │    --quiet                    Suppress all output                                                   │
 │    --help                     Show this message and exit.                                           │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -84,6 +85,10 @@ against the `qcovs` column of the blast output.
 The minimum _S. pneumoniae_ ANI required to predict PBP type. The ANI is calculated using
 [FastANI](https://github.com/ParBLiSS/FastANI) and the
 [GCF_000006885](https://www.ncbi.nlm.nih.gov/assembly/GCF_000006885/) reference genome.
+
+### --check
+
+Check that the `fastANI` and `tblastn` dependencies are available from the PATH.
 
 ### --quiet
 

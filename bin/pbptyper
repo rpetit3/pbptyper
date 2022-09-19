@@ -20,6 +20,29 @@ TBLASTN_COLS = [
     "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore", "qseq", "sseq"
 ]
 
+
+def check_dependencies():
+    """
+    Check if all dependencies are installed.
+    """
+    from shutil import which
+    exit_code = 0
+    print(f'Checking dependencies...', file=sys.stderr)
+    for program in ['fastANI', 'tblastn']:
+        which_path = which(program)
+        if which_path:
+            print(f'Found {program} at {which_path}', file=sys.stderr)
+        else:
+            print(f'{program} not found', file=sys.stderr)
+            exit_code = 1
+    
+    if exit_code == 1:
+        print(f'Missing dependencies, please check.', file=sys.stderr)
+    else:
+        print(f'You are all set!', file=sys.stderr)
+    sys.exit(exit_code)
+
+
 def check_file_exists(filename: str) -> str:
     """
     Check if file exists and return the absolute path of file, otherwise raise an error.
@@ -135,9 +158,13 @@ def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> di
 @click.option('--min_pident', default=95, show_default=True, help='Minimum percent identity to count a hit')
 @click.option('--min_coverage', default=95, show_default=True, help='Minimum percent coverage to count a hit')
 @click.option('--min_ani', default=90, show_default=True, help='Minimum S. pneumoniae ANI to predict PBP Type')
+@click.option('--check', is_flag=True, help='Check dependencies are installed, then exit')
 @click.option('--quiet', is_flag=True, help='Suppress all output')
-def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, quiet):
+def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, check, quiet):
     """In silico Penicillin Binding Protein (PBP) typer for Streptococcus pneumoniae assemblies"""
+    if check:
+        check_dependencies()
+        sys.exit(0)
     if outdir != "./":
         Path(outdir).mkdir(parents=True, exist_ok=True)
     assembly = check_file_exists(assembly)
