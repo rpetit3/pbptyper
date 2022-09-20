@@ -21,16 +21,6 @@ TBLASTN_COLS = [
 ]
 
 
-class OptionRequiredIf(click.Option):
-    def full_process_value(self, ctx, value):
-        value = super(OptionRequiredIf, self).full_process_value(ctx, value)
-
-        if value is None and ctx.params['output'] == 'file':
-            msg = 'Required if --output=file'
-            raise click.MissingParameter(ctx=ctx, param=self, message=msg)
-        return value
-
-
 def check_dependencies():
     """
     Check if all dependencies are installed.
