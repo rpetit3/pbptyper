@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 import rich_click as click
 
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 DB_PATH = str(Path( __file__ ).parent.absolute()).replace("bin", "db")
 DB_FASTAS = {
     "1A": "SPN_bLactam_1A-DB.faa",
@@ -19,6 +19,16 @@ TBLASTN_COLS = [
     "qseqid", "sseqid", "pident", "qcovs", "qlen", "slen", "length", "nident", "mismatch",
     "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore", "qseq", "sseq"
 ]
+
+
+class OptionRequiredIf(click.Option):
+    def full_process_value(self, ctx, value):
+        value = super(OptionRequiredIf, self).full_process_value(ctx, value)
+
+        if value is None and ctx.params['output'] == 'file':
+            msg = 'Required if --output=file'
+            raise click.MissingParameter(ctx=ctx, param=self, message=msg)
+        return value
 
 
 def check_dependencies():
@@ -162,9 +172,6 @@ def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> di
 @click.option('--quiet', is_flag=True, help='Suppress all output')
 def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, check, quiet):
     """In silico Penicillin Binding Protein (PBP) typer for Streptococcus pneumoniae assemblies"""
-    if check:
-        check_dependencies()
-        sys.exit(0)
     if outdir != "./":
         Path(outdir).mkdir(parents=True, exist_ok=True)
     assembly = check_file_exists(assembly)
@@ -285,4 +292,10 @@ def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, ch
         print(f"[italic]Predicted pbp type result written to [deep_sky_blue1]{outfile}.tsv[/deep_sky_blue1][/italic]\n")
 
 if __name__ == '__main__':
-    pbptyper()
+    if len(sys.argv) == 1:
+        pbptyper.main(['--help'])
+    elif "--check" in sys.argv:
+        check_dependencies()
+        sys.exit(0)
+    else:
+        pbptyper()
