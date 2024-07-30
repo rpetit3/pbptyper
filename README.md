@@ -159,7 +159,7 @@ This is just one way to do it, there are many other ways.
 
 ### Example `{PREFIX}-{1A|2B|2X}.tblastn.tsv`
 
-The blast results include sequences which won't display very nicely here. But, don't fret,
+The blast results include sequences which will not display very nicely here. But, don't fret,
 it is the standard `-outfmt 6`, so tab-delimited and easy to parse.
 
 ## Naming
