@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+pbptyper_dir=$(dirname $0)
+
+CAML_YAML="${pbptyper_dir}/../share/pbptyper/pbptyper.yaml" \
+CAML_TARGETS="${pbptyper_dir}/../share/pbptyper/pbptyper.fasta" \
+    pbptyper-main \
+    "${@:1}"

@@ -1,291 +1,288 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python
+import logging
+import os
 import sys
 from pathlib import Path
-from executor import ExternalCommand, ExternalCommandFailed
-from rich import print
-from rich.console import Console
-from rich.table import Table
+
+import rich
+import rich.console
+import rich.traceback
 import rich_click as click
+from rich import print
+from rich.logging import RichHandler
+from rich.table import Table
 
-VERSION = '1.0.4'
-DB_PATH = str(Path( __file__ ).parent.absolute()).replace("bin", "db")
-DB_FASTAS = {
-    "1A": "SPN_bLactam_1A-DB.faa",
-    "2B": "SPN_bLactam_2B-DB.faa",
-    "2X": "SPN_bLactam_2X-DB.faa"
+import camlhmp
+from camlhmp.engines.blast import run_blast
+from camlhmp.framework import print_version, read_framework
+from camlhmp.parsers.blast import get_blast_allele_hits
+from camlhmp.utils import file_exists_error, validate_file, write_tsv
+
+DB_PATH = str(Path(__file__).parent.absolute()).replace("bin", "data")
+
+# Set up Rich
+stderr = rich.console.Console(stderr=True)
+rich.traceback.install(console=stderr, width=200, word_wrap=True, extra_lines=1)
+click.rich_click.USE_RICH_MARKUP = True
+click.rich_click.OPTION_GROUPS = {
+    "pbptyper": [
+        {
+            "name": "Required Options",
+            "options": [
+                "--input",
+                "--yaml",
+                "--targets",
+            ],
+        },
+        {
+            "name": "Filtering Options",
+            "options": [
+                "--min-pident",
+                "--min-coverage",
+            ],
+        },
+        {
+            "name": "Additional Options",
+            "options": [
+                "--prefix",
+                "--outdir",
+                "--force",
+                "--verbose",
+                "--silent",
+                "--version",
+                "--help",
+            ],
+        },
+    ]
 }
-REFERENCE = "GCF_000006885"
-TBLASTN_COLS = [
-    "qseqid", "sseqid", "pident", "qcovs", "qlen", "slen", "length", "nident", "mismatch",
-    "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore", "qseq", "sseq"
-]
-
-
-def check_dependencies():
-    """
-    Check if all dependencies are installed.
-    """
-    from shutil import which
-    exit_code = 0
-    print(f'Checking dependencies...', file=sys.stderr)
-    for program in ['fastANI', 'tblastn']:
-        which_path = which(program)
-        if which_path:
-            print(f'Found {program} at {which_path}', file=sys.stderr)
-        else:
-            print(f'{program} not found', file=sys.stderr)
-            exit_code = 1
-    
-    if exit_code == 1:
-        print(f'Missing dependencies, please check.', file=sys.stderr)
-    else:
-        print(f'You are all set!', file=sys.stderr)
-    sys.exit(exit_code)
-
-
-def check_file_exists(filename: str) -> str:
-    """
-    Check if file exists and return the absolute path of file, otherwise raise an error.
-
-    Args:
-        `filename`: Name of file to check.
-
-    Returns:
-        Absolute path of file.
-    """
-    if not Path(filename).exists():
-        raise click.BadParameter(f'{filename} does not exist')
-    return str(Path(filename).absolute())
-
-
-def run_fastani(query: str, reference: str, outfile: dir) -> float:
-    """
-    Run FastANI and save the output to a file.
-
-    Args:
-        `query`: Path to query file.
-        `reference`: Path to database file.
-        `outfile`: Path to output file.
-    """
-    try:
-        command = ExternalCommand(
-            f"fastANI -q {query} -r {reference} -o {outfile}",
-            capture=True, 
-            capture_stderr=True
-        )
-        command.start()
-
-        ani = 0
-        with open(outfile, 'r') as f:
-            line = f.readline()
-            if line:
-                # test/SRR2912551.fna.gz  GCF_000006885.fna.gz    98.5904 229     246
-                # capture the ANI or 3rd column
-                ani = float(line.split('\t')[2])
-
-        if ani == 0:
-            with open(outfile, 'w') as f:
-                f.write("fastANI does not report ANIs <80%\n")
-        return ani
-    except ExternalCommandFailed as e:
-        print(e, file=sys.stderr)
-        sys.exit(e.returncode)
-
-
-def run_tblastn(query: str, db: str, min_pident: float, min_coverage: int) -> dict:
-    """
-    Run BLASTN and save the output to a file.
-
-    Args:
-        `query`: Path to query file.
-        `db`: Path to database file.
-        `min_pident`: Minimum percent identity.
-        `min_coverage`: Minimum coverage.
-
-    Returns:
-        Dictionary of BLASTN output.
-    """
-    from executor import ExternalCommand, ExternalCommandFailed
-
-    outfmt = ' '.join(TBLASTN_COLS)
-    cat_type = 'zcat' if db.endswith('.gz') else 'cat'
-    try:
-        # Sort results by query coverage, percent identity, then bitscore
-        command = ExternalCommand(
-            f"{cat_type} {db} | tblastn -query {query} -subject - -qcov_hsp_perc {min_coverage} -outfmt '6 {outfmt}' | sort -rn -k 4,4 -k 3,3 -k 16,16",
-            capture=True, 
-            capture_stderr=True
-        )
-        command.start()
-
-        # Convert results to list of dictionaries
-        top_hit = {'pbp_id': 'NONE', 'qcovs': "0", 'pident': "0.0", 'bitscore': "0"}
-        secondary_hits = []
-        raw_results = []
-        for line in str(command.decoded_stdout).split("\n"):
-            if line:
-                raw_results.append(line)
-                result = dict(zip(TBLASTN_COLS, line.split('\t')))
-                if float(result['pident']) >= min_pident:
-                    if top_hit['pbp_id'] == 'NONE':
-                        top_hit = result
-                        if float(result['pident']) == 100.0 and int(result['length']) == int(result['qlen']):
-                            top_hit['pbp_id'] = result['qseqid'].split("|")[0]
-                        else:
-                            top_hit['pbp_id'] = 'NEW'
-                    else:
-                        if float(result['pident']) == 100.0 and int(result['length']) == int(result['qlen']):
-                            result['pbp_id'] = result['qseqid'].split("|")[0]
-                            secondary_hits.append(result)
-                else:
-                    if top_hit['pbp_id'] == 'NONE':
-                        top_hit = result
-                        top_hit['pbp_id'] = 'NA'
-        if top_hit['pbp_id'] == 'NONE':
-            top_hit['pbp_id'] = 'NA'
-        return [top_hit, secondary_hits, raw_results, command.decoded_stderr]
-    except ExternalCommandFailed as e:
-        print(e, file=sys.stderr)
-        sys.exit(e.returncode)
 
 
 @click.command()
-@click.version_option(VERSION)
-@click.option('--assembly', required=True, help='Input assembly in FASTA format (gzip is OK)')
-@click.option('--db', default=DB_PATH, show_default=True, help='Path to the input database')
-@click.option('--prefix', default="basename of input", show_default=True, help='Prefix to use for output files')
-@click.option('--outdir', default="./", show_default=True, help='Directory to save output files')
-@click.option('--min_pident', default=95, show_default=True, help='Minimum percent identity to count a hit')
-@click.option('--min_coverage', default=95, show_default=True, help='Minimum percent coverage to count a hit')
-@click.option('--min_ani', default=90, show_default=True, help='Minimum S. pneumoniae ANI to predict PBP Type')
-@click.option('--check', is_flag=True, help='Check dependencies are installed, then exit')
-@click.option('--quiet', is_flag=True, help='Suppress all output')
-def pbptyper(assembly, db, prefix, outdir, min_pident, min_coverage, min_ani, check, quiet):
-    """In silico Penicillin Binding Protein (PBP) typer for Streptococcus pneumoniae assemblies"""
-    if outdir != "./":
-        Path(outdir).mkdir(parents=True, exist_ok=True)
-    assembly = check_file_exists(assembly)
-    prefix = str(Path(assembly).stem) if prefix == "basename of input" else prefix
+@click.option(
+    "--input",
+    "-i",
+    required=False if "--version" in sys.argv else True,
+    help="Input file in FASTA format to classify",
+)
+@click.option(
+    "--yaml",
+    "-y",
+    required=True,
+    default=os.environ.get("CAML_YAML", None),
+    show_default=True,
+    help="YAML file documenting the targets and types",
+)
+@click.option(
+    "--targets",
+    "-t",
+    required=False if "--version" in sys.argv else True,
+    default=os.environ.get("CAML_TARGETS", None),
+    show_default=True,
+    help="Query targets in FASTA format",
+)
+@click.option(
+    "--outdir",
+    "-o",
+    type=click.Path(exists=False),
+    default="./",
+    show_default=True,
+    help="Directory to write output",
+)
+@click.option(
+    "--prefix",
+    "-p",
+    type=str,
+    default="pbptyper",
+    show_default=True,
+    help="Prefix to use for output files",
+)
+@click.option(
+    "--min-pident",
+    default=95,
+    show_default=True,
+    help="Minimum percent identity to count a hit",
+)
+@click.option(
+    "--min-coverage",
+    default=95,
+    show_default=True,
+    help="Minimum percent coverage to count a hit",
+)
+@click.option("--force", is_flag=True, help="Overwrite existing reports")
+@click.option("--verbose", is_flag=True, help="Increase the verbosity of output")
+@click.option("--silent", is_flag=True, help="Only critical errors will be printed")
+@click.option("--version", is_flag=True, help="Print schema and camlhmp version")
+def pbptyper(
+    input,
+    yaml,
+    targets,
+    prefix,
+    outdir,
+    min_pident,
+    min_coverage,
+    force,
+    verbose,
+    silent,
+    version,
+):
+    """pbptyper - In silico Penicillin Binding Protein (PBP) typer for S. pneumoniae assemblies"""
+    # Setup logs
+    logging.basicConfig(
+        format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))
+        ],
+    )
+    logging.getLogger().setLevel(
+        logging.ERROR if silent else logging.DEBUG if verbose else logging.INFO
+    )
 
-    console = Console()
-    results = {}
-    comment = []
-    for k,v in DB_FASTAS.items():
-        if not quiet:
-            print(f"[italic]Running TBLASTN for {k}...[/italic]")
-        query = check_file_exists(f"{db}/{v}")
-        top_hit, secondary_hits, tblastn_stdout, tblastn_stderr = run_tblastn(query, assembly, min_pident, min_coverage)
-        results[k] = top_hit
+    # Verify input files are available
+    yaml_path = validate_file(yaml)
 
-        # Check if multiple perfect matches were found
-        if len(secondary_hits) > 0:
-            perfect_matches = [top_hit['pbp_id']]
-            for hit in secondary_hits:
-                perfect_matches.append(hit['pbp_id'])
-            perfect_matches = ', '.join(perfect_matches)
-            comment.append(f"Unable to determine an ID for {k}, due to perfect matches to multiple alleles. Including: {perfect_matches}")
-            results[k]['pbp_id'] = 'MULTIPLE'
+    # Read the YAML file
+    framework = read_framework(yaml_path)
 
-        # Write tblastn hits
-        outfile = f"{outdir}/{prefix}-{k}".replace("//", "/")
+    # If prompted, print the schema and camlhmp version, then exit
+    if version:
+        print_version(framework)
 
-        if not quiet:
-            print(f"[italic]TBLASTN results written to [deep_sky_blue1]{outfile}.tblastn.tsv[/deep_sky_blue1][/italic]\n")
-        with open(f"{outfile}.tblastn.tsv", 'wt') as fh_out:
-            fh_out.write("\t".join(TBLASTN_COLS) + "\n")
-            for result in tblastn_stdout:
-                fh_out.write(f"{result}\n")
+    # Verify remaining input files
+    input_path = validate_file(input)
+    targets_path = validate_file(targets)
+    logging.debug(f"Processing {targets}")
 
-    # Run fastANI
-    fastani_outfile = f"{outdir}/{prefix}.fastani.tsv".replace("//", "/")
-    if not quiet:
-        print(f"[italic]Running fastANI...[/italic]")
-    ani = run_fastani(assembly, check_file_exists(f"{db}/{REFERENCE}.fna.gz"), fastani_outfile)
-    ani_string = "< 80" if ani == 0 else f"{ani:.2f}"
-    if not quiet:
-        print(f"[italic]S. pneumoniae ({REFERENCE}) ANI is {ani_string}%, results written to [deep_sky_blue1]{fastani_outfile}[/deep_sky_blue1][/italic]\n")
+    # Create the output directory
+    logging.debug(f"Creating output directory: {outdir}")
+    Path(outdir).mkdir(parents=True, exist_ok=True)
 
-    # Predicted PBP Type
-    outfile = f"{outdir}/{prefix}".replace("//", "/")
-    prediction_table = Table(title=f"Predicted PBP Type")
-    prediction_table.add_column("sample", style="white")
-    prediction_table.add_column("pbptype", style="cyan")
-    prediction_table.add_column("ani", style="green")
-    prediction_table.add_column("1A_coverage", style="green")
-    prediction_table.add_column("1A_pident", style="green")
-    prediction_table.add_column("1A_bitscore", style="green")
-    prediction_table.add_column("2B_coverage", style="green")
-    prediction_table.add_column("2B_pident", style="green")
-    prediction_table.add_column("2B_bitscore", style="green")
-    prediction_table.add_column("2X_coverage", style="green")
-    prediction_table.add_column("2X_pident", style="green")
-    prediction_table.add_column("2X_bitscore", style="green")
-    prediction_table.add_column("comment", style="green")
-    with open(f"{outfile}.tsv", 'wt') as fh_out:
-        if ani >= min_ani:
-            pbptype = f"{results['1A']['pbp_id']}:{results['2B']['pbp_id']}:{results['2X']['pbp_id']}"
-        else:
-            pbptype = f"NOTSPN:NOTSPN:NOTSPN"
-            comment.append(f"ANI to [italic]S. pneumoniae[/italic] ({REFERENCE}) is {ani_string}%, which is below the minimum {min_ani}% ANI required to predict PBP Type")
-        
-        comment = '; '.join(comment)
-        prediction_table.add_row(
-            prefix,
-            pbptype,
-            ani_string,
-            results['1A']['qcovs'],
-            results['1A']['pident'],
-            results['1A']['bitscore'],
-            results['2B']['qcovs'],
-            results['2B']['pident'],
-            results['2B']['bitscore'],
-            results['2X']['qcovs'],
-            results['2X']['pident'],
-            results['2X']['bitscore'],
-            comment
-        )
-        column_names = "\t".join([
-            "sample",
-            "pbptype",
-            "ani",
-            "1A_coverage",
-            "1A_pident",
-            "1A_bitscore",
-            "2B_coverage",
-            "2B_pident",
-            "2B_bitscore",
-            "2X_coverage",
-            "2X_pident",
-            "2X_bitscore",
-            "comment"
-        ])
-        fh_out.write(f"{column_names}\n")
-        column_vals = "\t".join([
-            prefix,
-            pbptype,
-            ani_string,
-            results['1A']['qcovs'],
-            results['1A']['pident'],
-            results['1A']['bitscore'],
-            results['2B']['qcovs'],
-            results['2B']['pident'],
-            results['2B']['bitscore'],
-            results['2X']['qcovs'],
-            results['2X']['pident'],
-            results['2X']['bitscore'],
-            comment
-        ])
-        fh_out.write(f"{column_vals}\n")
-    
-    if not quiet:
-        console.print(prediction_table)  
-        print(f"[italic]Predicted pbp type result written to [deep_sky_blue1]{outfile}.tsv[/deep_sky_blue1][/italic]\n")
+    # Output files
+    result_tsv = f"{outdir}/{prefix}.tsv".replace("//", "/")
+    blast_tsv = f"{outdir}/{prefix}.{framework['engine']['tool']}.tsv".replace(
+        "//", "/"
+    )
+    details_tsv = f"{outdir}/{prefix}.details.tsv".replace("//", "/")
 
-if __name__ == '__main__':
+    # Make sure output files don't already exist
+    file_exists_error(result_tsv, force)
+    file_exists_error(blast_tsv, force)
+    file_exists_error(details_tsv, force)
+
+    # Describe the command line arguments
+    console = rich.console.Console(stderr=True)
+    print(
+        "[italic]Running [deep_sky_blue1]pbptyper[/deep_sky_blue1] (via camlhmp) with following parameters:[/italic]",
+        file=sys.stderr,
+    )
+    print(f"[italic]    --input {input}[/italic]", file=sys.stderr)
+    print(f"[italic]    --yaml {yaml}[/italic]", file=sys.stderr)
+    print(f"[italic]    --targets {targets}[/italic]", file=sys.stderr)
+    print(f"[italic]    --outdir {outdir}[/italic]", file=sys.stderr)
+    print(f"[italic]    --prefix {prefix}[/italic]", file=sys.stderr)
+    print(f"[italic]    --min-pident {min_pident}[/italic]", file=sys.stderr)
+    print(f"[italic]    --min-coverage {min_coverage}[/italic]\n", file=sys.stderr)
+
+    print(
+        f"[italic]Starting camlhmp for {framework['metadata']['name']}...[/italic]",
+        file=sys.stderr,
+    )
+
+    # Run blast
+    print(f"[italic]Running {framework['engine']['tool']}...[/italic]", file=sys.stderr)
+    hits, blast_stdout, blast_stderr = run_blast(
+        framework["engine"]["tool"], input_path, targets_path, min_pident, min_coverage
+    )
+
+    # Process the hits against the types
+    print("[italic]Processing hits...[/italic]", file=sys.stderr)
+    target_results = get_blast_allele_hits(framework["targets"], blast_stdout, min_pident, min_coverage)
+
+    # Finalize the results
+    print("[italic]Final Results...[/italic]", file=sys.stderr)
+    type_table = Table(title=f"{framework['metadata']['name']}")
+    type_table.add_column("sample", style="white")
+    type_table.add_column("pbptype", style="white")
+    type_table.add_column(f"1A_id", style="cyan")
+    type_table.add_column(f"1A_pident", style="cyan")
+    type_table.add_column(f"1A_qcovs", style="cyan")
+    type_table.add_column(f"1A_bitscore", style="cyan")
+    type_table.add_column(f"1A_comment", style="cyan")
+    type_table.add_column(f"2B_id", style="cyan")
+    type_table.add_column(f"2B_pident", style="cyan")
+    type_table.add_column(f"2B_qcovs", style="cyan")
+    type_table.add_column(f"2B_bitscore", style="cyan")
+    type_table.add_column(f"2B_comment", style="cyan")
+    type_table.add_column(f"2X_id", style="cyan")
+    type_table.add_column(f"2X_pident", style="cyan")
+    type_table.add_column(f"2X_qcovs", style="cyan")
+    type_table.add_column(f"2X_bitscore", style="cyan")
+    type_table.add_column(f"2X_comment", style="cyan")
+    type_table.add_column("schema", style="cyan")
+    type_table.add_column("schema_version", style="cyan")
+    type_table.add_column("camlhmp_version", style="cyan")
+    type_table.add_column("params", style="cyan")
+
+    # Get the final type(s)
+    final_pbptype = ":".join([
+        "MULTIPLE" if "," in target_results["1A"]["id"] else target_results["1A"]["id"],
+        "MULTIPLE" if "," in target_results["2B"]["id"] else target_results["2B"]["id"],
+        "MULTIPLE" if "," in target_results["2X"]["id"] else target_results["2X"]["id"],
+    ])
+    final_row = {
+        "sample": prefix,
+        "pbptype": final_pbptype,
+        "1A_id": target_results["1A"]["id"],
+        "1A_pident": str(target_results["1A"]["pident"]),
+        "1A_qcovs": str(target_results["1A"]["qcovs"]),
+        "1A_bitscore": str(target_results["1A"]["bitscore"]),
+        "1A_comment": str(target_results["1A"]["comment"]),
+        "2B_id": target_results["2B"]["id"],
+        "2B_pident": str(target_results["2B"]["pident"]),
+        "2B_qcovs": str(target_results["2B"]["qcovs"]),
+        "2B_bitscore": str(target_results["2B"]["bitscore"]),
+        "2B_comment": str(target_results["2B"]["comment"]),
+        "2X_id": target_results["2X"]["id"],
+        "2X_pident": str(target_results["2X"]["pident"]),
+        "2X_qcovs": str(target_results["2X"]["qcovs"]),
+        "2X_bitscore": str(target_results["2X"]["bitscore"]),
+        "2X_comment": str(target_results["2X"]["comment"]),
+        "schema": framework["metadata"]["id"],
+        "schema_version": framework["metadata"]["version"],
+        "camlhmp_version": camlhmp.__version__,
+        "params": f"min-coverage={min_coverage};min-pident={min_pident}",
+    }
+
+    # Generate a comment based on the results
+    type_table.add_row(
+        *final_row.values(),
+    )
+    console.print(type_table)
+
+    # Write the results
+    print("[italic]Writing outputs...[/italic]", file=sys.stderr)
+
+    # Write final prediction
+    print(
+        f"[italic]Final predicted type written to [deep_sky_blue1]{result_tsv}[/deep_sky_blue1][/italic]",
+        file=sys.stderr,
+    )
+    write_tsv([final_row], result_tsv)
+
+    # Write blast results
+    print(
+        f"[italic]{framework['engine']['tool']} results written to [deep_sky_blue1]{blast_tsv}[/deep_sky_blue1][/italic]",
+        file=sys.stderr,
+    )
+    write_tsv(blast_stdout, blast_tsv)
+
+
+def main():
     if len(sys.argv) == 1:
-        pbptyper.main(['--help'])
-    elif "--check" in sys.argv:
-        check_dependencies()
-        sys.exit(0)
+        pbptyper.main(["--help"])
     else:
         pbptyper()
+
+
+if __name__ == "__main__":
+    main()
