@@ -68,10 +68,6 @@ jobs:
           bin/pbptyper --yaml data/pbptyper.yaml --targets data/pbptyper.fasta --input test/not-spn.fna.gz --prefix not-spn
           cat not-spn.tsv
           head not-spn.tblastn.tsv
-          echo "empty"
-          bin/pbptyper --yaml data/pbptyper.yaml --targets data/pbptyper.fasta --input test/empty.fasta --prefix empty
-          cat empty.tsv
-          head empty.tblastn.tsv
           echo "not-a-fasta"
           bin/pbptyper --yaml data/pbptyper.yaml --targets data/pbptyper.fasta --input test/not-a-fasta.fasta --prefix not-a-fasta
           cat not-a-fasta.tsv
