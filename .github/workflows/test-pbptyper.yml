@@ -35,7 +35,7 @@ jobs:
       - name: Test pbptyper basics
         run: |
           echo "Testing pbptyper"
-          bin/pbptyper --version
+          bin/pbptyper --version --yaml data/pbptyper.yaml 
           bin/pbptyper --help
 
       - name: Test pbptyper
